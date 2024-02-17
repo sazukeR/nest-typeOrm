@@ -1,4 +1,4 @@
-import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { BeforeInsert, BeforeUpdate, Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 
 
@@ -44,6 +44,13 @@ export class Product {
     gender: string;
 
 
+    @Column('text', {
+        array: true,
+        default: []
+    })
+    tags: string[];
+
+
     @BeforeInsert()
     checkSlugInsert() {
 
@@ -56,6 +63,18 @@ export class Product {
             .replaceAll(' ', '_')
             .replaceAll("'", '')
             
+    }
+
+
+
+    @BeforeUpdate()
+    checkSlugUpdated() {
+
+        this.slug = this.slug
+            .toLowerCase()
+            .replaceAll(' ', '_')
+            .replaceAll("'", '')
+
     }
 
 }
