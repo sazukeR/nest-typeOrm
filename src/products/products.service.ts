@@ -2,10 +2,11 @@ import { BadRequestException, Injectable, InternalServerErrorException, Logger, 
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Repository } from 'typeorm';
-import { Product } from './entities/product.entity';
+import { Product, ProductImage } from './entities';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaginationDto } from '../common/dtos/pagination.dto';
 import { validate as isUUID } from 'uuid'
+
 
 @Injectable()
 export class ProductsService {
@@ -15,7 +16,10 @@ export class ProductsService {
   constructor(
 
     @InjectRepository(Product)
-    private readonly productRepository: Repository<Product>
+    private readonly productRepository: Repository<Product>,
+
+    @InjectRepository(ProductImage)
+    private readonly productImagesRepository: Repository<ProductImage>
 
   ) {}
 
@@ -23,12 +27,17 @@ export class ProductsService {
   async create(createProductDto: CreateProductDto) {
 
     try {
+
+      const { images = [], ...productDetails } = createProductDto;
       
-      const product = this.productRepository.create(createProductDto);
+      const product = this.productRepository.create({
+        ...productDetails,
+        images: images.map( images => this.productImagesRepository.create({ url: images }) )
+      });
 
       await this.productRepository.save(product);
 
-      return product;
+      return {...product, images};
 
     } catch (error) {
 
@@ -66,11 +75,19 @@ export class ProductsService {
 
     const { limit = 10, offset = 0 } = paginationDto;
 
-    return await this.productRepository.find({
+    const products = await this.productRepository.find({
       take: limit,
       skip: offset,
+      relations: {
+        images: true,
+      }
     });
 
+    // aplanar las imagenes
+    return products.map( product => ({
+      ...product,
+      images: product.images.map( img => img.url ),
+    }))
   }
 
   async findOne(term: string) {
@@ -82,13 +99,15 @@ export class ProductsService {
     }
     else {
       
-      const queryBuilder = this.productRepository.createQueryBuilder();
+      const queryBuilder = this.productRepository.createQueryBuilder('prod');
 
       product = await queryBuilder
         .where('UPPER(title) =:title or slug =:slug', {
           title: term.toUpperCase(),
           slug: term.toLowerCase(),
-        }).getOne(); // podria lanzar mas de un resultado, por eso utilizamos el getOne()
+        })
+        .leftJoinAndSelect('prod.images', 'prodImages')
+        .getOne(); // podria lanzar mas de un resultado, por eso utilizamos el getOne()
     }
 
     if( !product ) {
@@ -99,11 +118,20 @@ export class ProductsService {
 
   }
 
+  async findOnePlain(term: string) {
+    const { images = [], ...rest } = await this.findOne( term );
+    return {
+      ...rest,
+      images: images.map( image => image.url ),
+    }
+  }
+
   async update(id: string, updateProductDto: UpdateProductDto) {
 
     const product = await this.productRepository.preload({
       id: id,
       ...updateProductDto,
+      images: [],
     })
 
     if ( !product ) {
