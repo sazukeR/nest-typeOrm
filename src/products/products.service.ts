@@ -142,13 +142,34 @@ export class ProductsService {
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
     try {
+
+      // relizamos una transaccion donde primero vemos si tenemos imagenes para insertar, en caso de que tengamos imagenes, eliminamos las imagenes anteriores y agregamos las nuevas.
+      // estamos elimando las imagenes anteriores e insertando nuevas porque asi es como queremos que funcione nuestro api
+      if ( images ) {
+        await queryRunner.manager.delete( ProductImage, { product: { id } });
+
+        product.images = images.map( image => this.productImagesRepository.create({ url: image }) )
+      }
+
+      await queryRunner.manager.save( product );
+
+      // en este punto hacemos el commit de la transaccion, si el delete no fallo y el save tampoco fallo, una vez hacemos el commit realizamos el release y con eso limpiamos la transaccion.
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+
       
-      await this.productRepository.save(product);
-      return product;
+      // await this.productRepository.save(product);
+      // return product;
+      return this.findOnePlain( id );
 
     } catch (error) {
+      // en caso de error en la transaccion
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
 
       this.handleDBExceptions(error);
 
