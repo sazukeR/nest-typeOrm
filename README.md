@@ -20,7 +20,13 @@ yarn install
 docker-compose up -d
 ```
 
-6. Levantar el proyecto para desarrollo
+6. Ejecutar data semilla
+
+```
+http://localhost:3000/api/seed
+```
+
+7. Levantar el proyecto para desarrollo
 
 ```
 yarn start:dev
