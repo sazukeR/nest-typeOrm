@@ -27,7 +27,7 @@ export class AuthService {
 
     } catch (error) {
 
-
+      this.handleDBErrors(error);
       
     }
 
