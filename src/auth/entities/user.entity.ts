@@ -12,7 +12,9 @@ export class User {
   })
   email: string;
 
-  @Column('text')
+  @Column('text', {
+    select: false, // cuando se haga una consulta en la db la contrasena no se mostrara.
+  })
   password: string;
 
   @Column('text', {
