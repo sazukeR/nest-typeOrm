@@ -27,9 +27,9 @@ export class SeedService {
 
     const insertAllPromises = [];
 
-    products.forEach( product => {
+/*     products.forEach( product => {
       insertAllPromises.push( this.productsService.create( product ) );
-    })
+    }) */
 
     await Promise.all( insertAllPromises ); // espera a que todas las promesas se resuelvan para seguir con la ejecucion del codigo.
 
